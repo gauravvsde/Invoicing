@@ -1,10 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Edit, Download, Send, DollarSign } from "lucide-react"
+import { ArrowLeft, Edit, Download, Send, DollarSign, Loader2 } from "lucide-react"
 import { PDFGenerator } from "@/lib/pdf-generator"
+import { usePdfGenerator } from "@/hooks/use-pdf-generator"
 import type { Invoice } from "@/types/invoice"
 
 interface InvoiceViewProps {
@@ -16,9 +18,33 @@ interface InvoiceViewProps {
 }
 
 export function InvoiceView({ invoice, onClose, onEdit, onPayment, onDuplicate }: InvoiceViewProps) {
-  const handleDownloadPDF = () => {
-    const pdfGenerator = new PDFGenerator()
-    pdfGenerator.generateInvoicePDF(invoice)
+  const { generateInvoicePdf } = usePdfGenerator()
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
+  const handleDownloadPDF = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (isGeneratingPdf) return
+    
+    setIsGeneratingPdf(true)
+    try {
+      console.log('🟡 [InvoiceView] Starting PDF generation for:', {
+        invoiceNumber: invoice.invoiceNumber,
+        itemsCount: invoice.items?.length || 0,
+        total: invoice.totalAmount
+      })
+      
+      const result = await generateInvoicePdf(invoice)
+      console.log('🟢 [InvoiceView] PDF generation result:', result)
+      
+      if (!result) {
+        throw new Error('Failed to generate PDF: No result returned')
+      }
+    } catch (error) {
+      console.error('❌ [InvoiceView] Error generating PDF:', error)
+      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsGeneratingPdf(false)
+    }
   }
 
   const handleSendInvoice = () => {
@@ -64,9 +90,22 @@ export function InvoiceView({ invoice, onClose, onEdit, onPayment, onDuplicate }
               <Badge variant={getStatusColor(invoice.status)}>{invoice.status}</Badge>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleDownloadPDF}>
-                <Download className="h-4 w-4 mr-2" />
-                PDF
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadPDF}
+                disabled={isGeneratingPdf}
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
               </Button>
               <Button variant="outline" onClick={onDuplicate}>Duplicate</Button>
               <Button variant="outline" onClick={handleSendInvoice}>
