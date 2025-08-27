@@ -1,3 +1,7 @@
+export const config = {
+  runtime: "nodejs20.x",
+};
+
 import { NextResponse } from 'next/server';
 import { puppeteerPDFGenerator } from '@/lib/puppeteer-pdf-generator';
 import type { Quotation } from '@/types/quotation';
