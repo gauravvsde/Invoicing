@@ -157,7 +157,7 @@ export class PuppeteerPDFGenerator {
           .logo { max-width: 400px; max-height: 120px; object-fit: contain; }
 
           /* Cards */
-          .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: -5px; }
+          .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 5px; }
           .card {
             background: ${primaryLight};
             border-radius: 10px;
