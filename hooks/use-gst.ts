@@ -40,8 +40,7 @@ export function useGST() {
           newRecords.push({
             type: "collected",
             amount: invoice.totalAmount,
-            gstRate: invoice.items.reduce((acc, item) => acc + item.gstRate, 0) / invoice.items.length, // Average GST rate
-            gstAmount: invoice.gstAmount,
+            gstAmount: invoice.gstAmount, // Directly use the total GST amount from the invoice
             date: invoice.createdAt,
             month,
             quarter,
