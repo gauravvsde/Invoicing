@@ -255,14 +255,7 @@ export class PuppeteerPDFGenerator {
 
           /* Bottom grid */
           .bottom {
-            display: flex; 
-            justify-content: flex-end; 
-            gap: 16px; 
-            margin-top: 16px;
-          }
-          .bank {
-            margin-right: auto;
-          }
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
           .panel {
             background: ${primaryLight};
             border-radius: 10px;
@@ -284,7 +277,7 @@ export class PuppeteerPDFGenerator {
             border: 1px solid #E5E7EB; 
             border-radius: 10px; 
             padding: 14px 16px; 
-            min-width: 300px;
+            min-width: 200px;
           }
           .totals-row { 
             display: grid; 
