@@ -1,5 +1,6 @@
 export interface InvoiceItem {
   id: string
+  title: string
   description: string
   quantity: number
   rate: number

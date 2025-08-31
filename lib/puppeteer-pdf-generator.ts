@@ -126,11 +126,30 @@ export class PuppeteerPDFGenerator {
       phone: doc.customerPhone
     };
 
+    // Define the computed item type
+    interface ComputedItem {
+      index: number;
+      title: string;
+      description: string;
+      hsnCode?: string;
+      subtitle?: string;
+      qty: number;
+      rate: number;
+      gstRate: number;
+      amount: number;
+      cgst: number;
+      sgst: number;
+      lineTotal: number;
+    }
+
     // Compute per-line taxes and totals
     const computed = (doc.items || []).map((it: {
       quantity?: number;
       rate?: number;
       gstRate?: number;
+      title?: string;
+      description?: string;
+      hsnCode?: string;
       [key: string]: any;
     }, i: number) => {
       const qty = Number(it.quantity || 0);
@@ -140,22 +159,25 @@ export class PuppeteerPDFGenerator {
       const cgst = amount * (gstRate / 100) / 2;
       const sgst = amount * (gstRate / 100) / 2;
       const lineTotal = amount + cgst + sgst;
-      return { index: i + 1, ...it, qty, rate, gstRate, amount, cgst, sgst, lineTotal };
+      const computedItem: ComputedItem = {
+        ...it,
+        index: i + 1,
+        qty,
+        rate,
+        gstRate,
+        amount,
+        cgst,
+        sgst,
+        lineTotal: amount + cgst + sgst,
+        title: it.title || '',
+        description: it.description || ''
+      };
+      return computedItem;
     });
 
-    type ComputedItem = {
-      amount: number;
-      cgst: number;
-      sgst: number;
-      [key: string]: any;
-    };
-
-    // Type assertion for the computed array
-    const typedComputed = computed as unknown as ComputedItem[];
-
-    const subAmount = typedComputed.reduce((sum, r) => sum + r.amount, 0);
-    const cgstSum = typedComputed.reduce((sum, r) => sum + r.cgst, 0);
-    const sgstSum = typedComputed.reduce((sum, r) => sum + r.sgst, 0);
+    const subAmount = computed.reduce((sum: number, r: ComputedItem) => sum + r.amount, 0);
+    const cgstSum = computed.reduce((sum: number, r: ComputedItem) => sum + r.cgst, 0);
+    const sgstSum = computed.reduce((sum: number, r: ComputedItem) => sum + r.sgst, 0);
     const rawTotal = subAmount + cgstSum + sgstSum;
 
     // Let caller override the nice grand total; otherwise round to whole rupee
@@ -360,12 +382,12 @@ export class PuppeteerPDFGenerator {
               </tr>
             </thead>
             <tbody>
-              ${computed.map((r: { index: number; description?: string; hsnCode?: string; subtitle?: string; qty: number; rate: number; gstRate: number; amount: number; cgst: number; sgst: number; lineTotal: number }) => `
+              ${computed.map((r: ComputedItem) => `
                 <tr>
                   <td class="center">${r.index}.</td>
                   <td>
-                    <div class="desc">${this.esc(r.description || '')}${r.hsnCode ? ` <span class="muted">(HSN/SAC: ${this.esc(r.hsnCode)})</span>` : ''}</div>
-                    ${r.subtitle ? `<div class="subdesc">${this.esc(r.subtitle)}</div>` : ''}
+                    <div class="desc"><strong>${this.esc(r.title || '')}</strong>${r.hsnCode ? ` <span class="muted">(HSN/SAC: ${this.esc(r.hsnCode)})</span>` : ''}</div>
+                    ${r.description ? `<div class="subdesc">${this.esc(r.description)}</div>` : ''}
                   </td>
                   <td class="center">${this.esc(String(r.qty))}</td>
                   <td class="right">${this.formatINR(r.rate)}</td>

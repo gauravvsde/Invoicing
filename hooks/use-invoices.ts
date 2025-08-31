@@ -52,6 +52,7 @@ export function useInvoices() {
       notes: quotation.notes,
       items: quotation.items.map((item) => ({
         id: item.id,
+        title: item.title || '',
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,

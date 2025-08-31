@@ -45,7 +45,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     notes: "",
   }))
-  const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", description: "", quantity: 1, rate: 0, gstRate: 18 }])
+  const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
 
   useEffect(() => {
     if (invoice) {
@@ -72,7 +72,11 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
         dueDate: invoice.dueDate,
         notes: invoice.notes,
       });
-      setItems(invoice.items);
+      setItems(invoice.items.map(item => ({
+        ...item,
+        title: item.title || '',
+        description: item.description || ''
+      })));
     } else {
       // Generate new invoice number
       const now = new Date()
@@ -96,6 +100,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   const addItem = () => {
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
+      title: "",
       description: "",
       quantity: 1,
       rate: 0,
@@ -365,15 +370,26 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                         Remove
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      <div className="md:col-span-2">
-                        <Label>Description</Label>
-                        <Input
-                          value={item.description}
-                          onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                          placeholder="Item description"
-                        />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Item Title *</Label>
+                          <Input
+                            value={item.title}
+                            onChange={(e) => updateItem(item.id, 'title', e.target.value)}
+                            placeholder="Enter item title"
+                          />
+                        </div>
+                        <div>
+                          <Label>Description</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                            placeholder="Item description (optional)"
+                          />
+                        </div>
                       </div>
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div>
                         <Label>Qty</Label>
                         <Input
@@ -393,10 +409,11 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                           onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
                         />
                       </div>
-                      <div>
-                        <Label>GST (%)</Label>
+                    </div>
+                    <div>
+                      <Label>GST (%)</Label>
                         <Select
-                          value={item.gstRate.toString()}
+                          value={item.gstRate?.toString() || '0'}
                           onValueChange={(value) => updateItem(item.id, 'gstRate', parseFloat(value))}
                         >
                           <SelectTrigger>

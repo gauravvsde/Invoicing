@@ -45,7 +45,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     notes: "",
   }))
-  const [items, setItems] = useState<QuotationItem[]>([{ id: "1", description: "", quantity: 1, rate: 0, gstRate: 18 }])
+  const [items, setItems] = useState<QuotationItem[]>([{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
 
   useEffect(() => {
     if (quotation) {
@@ -65,7 +65,11 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
         validUntil: quotation.validUntil || "",
         notes: quotation.notes || "",
       })
-      setItems(quotation.items || [{ id: "1", description: "", quantity: 1, rate: 0, gstRate: 18 }])
+      setItems(quotation.items.map(item => ({
+        ...item,
+        title: item.title || '',
+        description: item.description || ''
+      })) || [{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
     } else {
       // Generate new quotation number
       const now = new Date()
@@ -81,6 +85,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
   const addItem = () => {
     const newItem: QuotationItem = {
       id: Date.now().toString(),
+      title: "",
       description: "",
       quantity: 1,
       rate: 0,
@@ -429,14 +434,24 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
                         </Button>
                       )}
                     </div>
-                    <div>
-                      <Label>Description *</Label>
-                      <Textarea
-                        value={item.description}
-                        onChange={(e) => updateItem(item.id, "description", e.target.value)}
-                        placeholder="Enter item description"
-                        rows={2}
-                      />
+                    <div className="space-y-2">
+                      <div>
+                        <Label>Item Title *</Label>
+                        <Input
+                          value={item.title}
+                          onChange={(e) => updateItem(item.id, "title", e.target.value)}
+                          placeholder="Enter item title"
+                        />
+                      </div>
+                      <div>
+                        <Label>Description</Label>
+                        <Textarea
+                          value={item.description}
+                          onChange={(e) => updateItem(item.id, "description", e.target.value)}
+                          placeholder="Enter item description (optional)"
+                          rows={2}
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
