@@ -150,7 +150,7 @@ export function InvoiceView({ invoice, onClose, onEdit, onPayment, onDuplicate }
                       <span className="font-medium">Number:</span> {invoice.invoiceNumber}
                     </p>
                     <p>
-                      <span className="font-medium">Date:</span> {new Date(invoice.createdAt).toLocaleDateString()}
+                      <span className="font-medium">Date:</span> {new Date(invoice.invoiceDate).toLocaleDateString()}
                     </p>
                     {invoice.dueDate && (
                       <p>

@@ -56,7 +56,11 @@ export class PuppeteerPDFGenerator {
     const docNumber = isInvoice 
       ? (document as Invoice).invoiceNumber 
       : (document as Quotation).quotationNumber;
-    const createdAt = document.createdAt ? new Date(document.createdAt) : new Date();
+    const docDate = isInvoice && (document as Invoice).invoiceDate 
+      ? new Date((document as Invoice).invoiceDate) 
+      : document.createdAt 
+        ? new Date(document.createdAt) 
+        : new Date();
     const validTill = !isInvoice && (document as Quotation).validUntil 
       ? new Date((document as Quotation).validUntil) 
       : undefined;
@@ -234,7 +238,7 @@ export class PuppeteerPDFGenerator {
               <h1 class="title">${isInvoice ? 'Invoice' : 'Estimate'}</h1>
               <div class="meta">
                 <label>${isInvoice ? 'Invoice No #' : 'Quotation No #'}</label><div>${this.esc(String(docNumber || ''))}</div>
-                <label>${isInvoice ? 'Invoice Date' : 'Quotation Date'}</label><div>${createdAt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</div>
+                <label>${isInvoice ? 'Invoice Date' : 'Quotation Date'}</label><div>${docDate.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</div>
                 ${!isInvoice && validTill ? `<label>Valid Till</label><div>${new Date(validTill).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</div>` : ''}
               </div>
             </div>
@@ -325,17 +329,18 @@ export class PuppeteerPDFGenerator {
             </div>
           </div>
 
-          <!-- TERMS -->
+          <!-- TERMS (only for estimate) -->
+          ${!isInvoice ? `
           <div class="terms">
             <h4>Terms & Conditions</h4>
             <ol>
-              <li> Amount once paid will not be refund back in any circumstances.</li>
+              <li>Amount once paid will not be refunded back in any circumstances.</li>
               <li>Warranties of products will be given by their respective manufacturers.</li>
               <li>For any disputes, jurisdiction will be Etah only.</li>
             </ol>
           </div>
-        </div>
-      </body>
+          ` : ''}
+          </body>
     </html>
     `;
   }

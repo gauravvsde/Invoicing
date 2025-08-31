@@ -36,6 +36,7 @@ export function useInvoices() {
 
     const invoiceData: Omit<Invoice, "id"> = {
       invoiceNumber,
+      invoiceDate: now.toISOString().split('T')[0],
       invoiceName: `Invoice for ${quotation.quotationNumber}`,
       companyName: quotation.companyName,
       companyEmail: quotation.companyEmail,

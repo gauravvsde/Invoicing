@@ -36,6 +36,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
     customerAddress: "",
     customerGSTIN: "",
     status: "draft",
+    invoiceDate: new Date().toISOString().split('T')[0], // Current date as default
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     notes: "",
   }))
@@ -57,6 +58,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
         customerAddress: invoice.customerAddress,
         customerGSTIN: invoice.customerGSTIN || "",
         status: invoice.status,
+        invoiceDate: invoice.invoiceDate || new Date().toISOString().split('T')[0],
         dueDate: invoice.dueDate,
         notes: invoice.notes,
       });
@@ -122,6 +124,14 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   const calculateTotal = () => {
     return calculateSubtotal() + calculateGSTAmount();
   };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,6 +247,38 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                 <CardTitle>Customer Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                    <Input
+                      id="invoiceNumber"
+                      name="invoiceNumber"
+                      value={formData.invoiceNumber}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceName">Invoice Name</Label>
+                    <Input
+                      id="invoiceName"
+                      name="invoiceName"
+                      value={formData.invoiceName}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, invoiceName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceDate">Invoice Date</Label>
+                    <Input
+                      type="date"
+                      id="invoiceDate"
+                      name="invoiceDate"
+                      value={formData.invoiceDate}
+                      onChange={handleDateChange}
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="customerName">Customer Name *</Label>

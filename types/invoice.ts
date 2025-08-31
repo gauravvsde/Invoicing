@@ -47,6 +47,7 @@ export interface Invoice {
   customerGSTIN?: string
   paid?: boolean // For backward compatibility with GST calculations
   status: "draft" | "sent" | "paid" | "overdue" | "cancelled" | "partially_paid"
+  invoiceDate: string
   dueDate: string
   paidDate?: string
   paidAmount?: number
