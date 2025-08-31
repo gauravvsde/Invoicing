@@ -34,6 +34,41 @@ export class PuppeteerPDFGenerator {
     })}`;
   }
 
+  private numberToWords(num: number): string {
+    const single = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const double = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const formatTens = (num: number): string => {
+      if (num < 10) return single[num];
+      if (num < 20) return double[num - 10];
+      return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + single[num % 10] : '');
+    };
+
+    if (num === 0) return 'Zero';
+    
+    const convert = (num: number): string => {
+      if (num < 100) return formatTens(num);
+      if (num < 1000) {
+        return single[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' and ' + formatTens(num % 100) : '');
+      }
+      if (num < 100000) {
+        return convert(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + convert(num % 1000) : '');
+      }
+      if (num < 10000000) {
+        return convert(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + convert(num % 100000) : '');
+      }
+      return convert(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + convert(num % 10000000) : '');
+    };
+
+    const rupees = Math.floor(num);
+    const paise = Math.round((num - rupees) * 100);
+    let result = convert(rupees) + ' Rupees';
+    if (paise > 0) {
+      result += ' and ' + convert(paise) + ' Paise';
+    }
+    return result.toUpperCase() + ' ONLY';
+  }
+
   private esc(str?: string) {
     return (str ?? '').replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]!));
   }
@@ -198,7 +233,13 @@ export class PuppeteerPDFGenerator {
 
           /* Bottom grid */
           .bottom {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+            display: flex; 
+            justify-content: flex-end; 
+            gap: 16px; 
+            margin-top: 16px;
+          }
+          .bank {
+            margin-right: auto;
           }
           .panel {
             background: ${primaryLight};
@@ -216,10 +257,39 @@ export class PuppeteerPDFGenerator {
             line-height: 1.2; 
           }
 
-          .totals { background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px 14px; }
-          .totals-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 6px 0; font-size: 12px; }
-          .totals-row.label { color: ${textMuted}; }
-          .totals-row.bold { font-weight: 700; font-size: 14px; border-top: 1px solid #E5E7EB; margin-top: 6px; padding-top: 10px; }
+          .totals { 
+            background: #fff; 
+            border: 1px solid #E5E7EB; 
+            border-radius: 10px; 
+            padding: 14px 16px; 
+            min-width: 300px;
+          }
+          .totals-row { 
+            display: grid; 
+            grid-template-columns: 1fr auto; 
+            gap: 12px; 
+            padding: 8px 0; 
+            font-size: 14px; 
+          }
+          .totals-row.label { 
+            color: ${textMuted}; 
+            font-size: 13px;
+          }
+          .totals-row.bold { 
+            font-weight: 700; 
+            font-size: 16px; 
+            border-top: 1px solid #E5E7EB; 
+            margin-top: 8px; 
+            padding-top: 12px; 
+          }
+          .amount-in-words {
+            font-weight: 600;
+            font-size: 12px;
+            color: #000000;
+            text-align: right;
+            line-height: 1.3;
+            max-width: 200px;
+          }
 
           /* Terms */
           .terms { margin-top: 14px; font-size: 12px; }
@@ -311,6 +381,7 @@ export class PuppeteerPDFGenerator {
 
           <!-- BANK + TOTALS -->
           <div class="bottom">
+            ${!isInvoice ? `
             <div class="card bank">
               <h3>Bank Details</h3>
               <div class="line"><strong>Account Name: </strong>Pratham Urja Solutions</div>
@@ -319,6 +390,7 @@ export class PuppeteerPDFGenerator {
               <div class="line"><strong>IFSC: </strong>HDFC0000868</div>
               <div class="line"><strong>Bank & Branch: </strong>HDFC Bank - Etah</div>
             </div>
+            ` : ` <div class="totals-row"><div class="amount-in-words">Total (in words)</div><div class="amount-in-words">${this.numberToWords(grandTotal)}</div></div> `}
 
             <div class="totals avoid-break">
               <div class="totals-row label"><div>Amount</div><div>${this.formatINR(subAmount)}</div></div>
