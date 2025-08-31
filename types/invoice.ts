@@ -38,6 +38,8 @@ export interface Invoice {
   companyGSTIN?: string
   companyPAN?: string
   companyVendorCode?: string
+  companyState?: string
+  companyStateCode?: string
   bankDetails?: BankDetails
   quotationId?: string // Reference to original quotation if converted
   customerName: string
