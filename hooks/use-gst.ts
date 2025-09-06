@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useQuotations } from "./use-quotations"
 import { useInvoices } from "./use-invoices"
+import { GSTFilterOptions, TimeRange, GSTReportData, ExcelExportOptions } from "@/types/gst-filters"
+import * as XLSX from 'xlsx';
 import { useFirestore } from "./useFirestore"
 import { orderBy, where, doc, deleteDoc, setDoc, getDoc, writeBatch } from "firebase/firestore"
 import { db } from "../lib/firebase"
@@ -10,6 +12,16 @@ import type { GSTRecord, GSTSummary, GSTReturn } from "../types/gst"
 import type { FirestoreError } from "firebase/firestore"
 
 export function useGST() {
+  // Filter state
+  const [filters, setFilters] = useState<GSTFilterOptions>({
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    type: 'all',
+    status: 'all'
+  });
+  
+  const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
+
   const { data: gstRecords, loading, error, saveDocument, deleteDocument } = 
     useFirestore<GSTRecord>('gstRecords', {
       queryConstraints: [orderBy('date', 'desc')],
@@ -243,8 +255,58 @@ export function useGST() {
     }
   }
 
+
+  // Get filtered records based on current filters
+  const getFilteredRecords = useCallback((): GSTRecord[] => {
+    return gstRecords.filter(record => {
+      // Filter by year if specified
+      if (filters.year && record.year !== filters.year.toString()) {
+        return false;
+      }
+      
+      // Filter by month if specified and record has a month
+      if (filters.month && record.month) {
+        const [recordYear, recordMonth] = record.month.split('-').map(Number);
+        if (recordMonth !== filters.month) {
+          return false;
+        }
+      }
+      
+      // Filter by type if specified
+      if (filters.type && filters.type !== 'all' && record.type !== filters.type) {
+        return false;
+      }
+      
+      // Filter by status if specified
+      if (filters.status && filters.status !== 'all' && record.status !== filters.status) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [gstRecords, filters])
+
+  // Get total GST collected
+  const getTotalGSTCollected = useCallback((): number => {
+    return getFilteredRecords()
+      .filter(r => r.type === 'collected')
+      .reduce((sum, r) => sum + (r.gstAmount || 0), 0)
+  }, [getFilteredRecords])
+
+  // Get total GST paid
+  const getTotalGSTPaid = useCallback((): number => {
+    return getFilteredRecords()
+      .filter(r => r.type === 'paid')
+      .reduce((sum, r) => sum + (r.gstAmount || 0), 0)
+  }, [getFilteredRecords])
+
+  // Get net GST liability
+  const getNetGSTLiability = useCallback((): number => {
+    return getTotalGSTCollected() - getTotalGSTPaid()
+  }, [getTotalGSTCollected, getTotalGSTPaid])
+  
   // Get GST summary for a period (e.g., a month)
-  const getGSTSummary = (month: string): GSTSummary => {
+  const getGSTSummary = useCallback((month: string): GSTSummary => {
     const monthRecords = gstRecords.filter(record => record.month === month)
     
     const gstCollected = monthRecords
@@ -263,33 +325,149 @@ export function useGST() {
       gstPaid,
       netGST,
     }
-  }
-
+  }, [gstRecords])
+  
   // Get current month's GST summary
-  const getCurrentMonthSummary = (): GSTSummary => {
-    const now = new Date()
-    const currentMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
-    return getGSTSummary(currentMonth)
-  }
+  const getCurrentMonthSummary = useCallback((): GSTSummary => {
+    const month = filters.month || new Date().getMonth() + 1;
+    const year = filters.year || new Date().getFullYear();
+    const currentMonth = `${year}-${month.toString().padStart(2, '0')}`;
+    return getGSTSummary(currentMonth);
+  }, [filters.month, filters.year, getGSTSummary])
 
-  // Get total GST collected
-  const getTotalGSTCollected = (): number => {
-    return gstRecords
-      .filter(r => r.type === 'collected')
-      .reduce((sum, r) => sum + (r.gstAmount || 0), 0)
-  }
+  // Filtered records based on current filters
+  const filteredRecords = useMemo(() => {
+    return gstRecords.filter(record => {
+      // Filter by year
+      const recordYear = new Date(record.date).getFullYear();
+      if (recordYear !== filters.year) return false;
+      
+      // Filter by month if in monthly view
+      if (timeRange === 'monthly' && filters.month !== undefined) {
+        const recordMonth = new Date(record.date).getMonth() + 1;
+        if (recordMonth !== filters.month) return false;
+      }
+      
+      // Filter by type
+      if (filters.type !== 'all' && record.type !== filters.type) return false;
+      
+      // Filter by status
+      if (filters.status !== 'all' && record.status !== filters.status) return false;
+      
+      return true;
+    });
+  }, [gstRecords, filters, timeRange]);
 
-  // Get total GST paid
-  const getTotalGSTPaid = (): number => {
-    return gstRecords
-      .filter(r => r.type === 'paid')
-      .reduce((sum, r) => sum + (r.gstAmount || 0), 0)
-  }
+  // Generate report data for the current filters
+  const generateReportData = useCallback((): GSTReportData[] => {
+    const periods = new Map<string, { collected: number; paid: number; records: any[] }>();
+    
+    filteredRecords.forEach(record => {
+      const period = timeRange === 'monthly' 
+        ? record.month 
+        : record.year;
+      
+      if (!periods.has(period)) {
+        periods.set(period, { collected: 0, paid: 0, records: [] });
+      }
+      
+      const periodData = periods.get(period)!;
+      periodData.records.push(record);
+      
+      if (record.type === 'collected') {
+        periodData.collected += record.gstAmount || 0;
+      } else {
+        periodData.paid += record.gstAmount || 0;
+      }
+    });
+    
+    const reportData: GSTReportData[] = [];
+    periods.forEach((data, period) => {
+      reportData.push({
+        period,
+        gstCollected: data.collected,
+        gstPaid: data.paid,
+        netGST: data.collected - data.paid,
+        records: data.records,
+        totalInvoices: data.records.length
+      });
+    });
+    
+    // Sort by period
+    reportData.sort((a, b) => a.period.localeCompare(b.period));
+    
+    return reportData;
+  }, [filteredRecords, timeRange]);
 
-  // Get net GST liability
-  const getNetGSTLiability = (): number => {
-    return getTotalGSTCollected() - getTotalGSTPaid()
-  }
+  // Export to Excel
+  const exportToExcel = useCallback(async (options: ExcelExportOptions) => {
+    try {
+      const reportData = generateReportData();
+      const wb = XLSX.utils.book_new();
+      
+      // Create summary sheet
+      const summaryData = reportData.map((item: GSTReportData) => ({
+        'Period': item.period,
+        'GST Collected': item.gstCollected,
+        'GST Paid': item.gstPaid,
+        'Net GST': item.netGST,
+        'Number of Records': item.totalInvoices || 0
+      }));
+      
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(summaryData),
+        'GST Summary'
+      );
+      
+      // Add detailed data if requested
+      if (options.includeDetails) {
+        const details = reportData.flatMap((period: GSTReportData) => 
+          period.records.map((record: any) => ({
+            'Date': record.date,
+            'Type': record.type,
+            'Description': record.description,
+            'Amount': record.amount,
+            'GST Amount': record.gstAmount,
+            'Status': record.status,
+            'Payment Status': record.paymentStatus,
+            'Customer': record.customerName || 'N/A',
+            'GSTIN': record.customerGSTIN || 'N/A'
+          }))
+        );
+        
+        XLSX.utils.book_append_sheet(
+          wb,
+          XLSX.utils.json_to_sheet(details),
+          'Detailed Records'
+        );
+      }
+      
+      // Generate file name
+      const fileName = `GST_Report_${filters.year}${timeRange === 'monthly' ? `_${filters.month?.toString().padStart(2, '0')}` : ''}.xlsx`;
+      
+      // Save the file
+      XLSX.writeFile(wb, fileName);
+      
+      return true;
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      return false;
+    }
+  }, [generateReportData, filters, timeRange]);
+
+  // Update filters
+  const updateFilters = useCallback((newFilters: Partial<GSTFilterOptions>) => {
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters
+    }));
+  }, []);
+
+  // Toggle time range
+  const toggleTimeRange = useCallback(() => {
+    setTimeRange(prev => prev === 'monthly' ? 'yearly' : 'monthly');
+  }, []);
 
   // Debug logging for loading state and data
   console.log('[useGST] Loading state:', loading);
@@ -298,20 +476,26 @@ export function useGST() {
   console.log('[useGST] Error:', error || apiError);
 
   return {
-    gstRecords,
+    gstRecords: filteredRecords,
     gstReturns,
     loading,
-    error: error || apiError,
+    error,
     addGSTRecord,
     updateGSTRecord,
     removeGSTRecord,
     fileGSTReturn,
     updateGSTReturn,
-    getGSTSummary,
-    getCurrentMonthSummary,
+    generateGSTRecords,
+    generateReportData,
     getTotalGSTCollected,
     getTotalGSTPaid,
     getNetGSTLiability,
-    generateGSTRecords
+    getGSTSummary,
+    getCurrentMonthSummary,
+    filters,
+    timeRange,
+    updateFilters,
+    toggleTimeRange,
+    exportToExcel,
   }
 }
