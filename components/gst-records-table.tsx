@@ -70,7 +70,7 @@ export function GSTRecordsTable() {
                   <p className="text-sm font-medium">{record.description}</p>
                   {(record.customerName || record.dealerId) && (
                     <p className="text-xs text-muted-foreground">
-                      Dealer: {record.customerName || getDealerName(record.dealerId)} {record.customerGSTIN ? `(${record.customerGSTIN})` : ''}
+                      Payer: {record.customerName || getDealerName(record.dealerId)} {record.customerGSTIN ? `(${record.customerGSTIN})` : ''}
                     </p>
                   )}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">

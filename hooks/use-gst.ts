@@ -68,9 +68,9 @@ export function useGST() {
           // Mark as processed immediately to prevent duplicate processing
           processedInvoiceIds.current.add(invoice.id);
           
-          const date = new Date(invoice.createdAt);
-          const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
-          const quarter = `${date.getFullYear()}-Q${Math.ceil((date.getMonth() + 1) / 3)}`;
+          const invoiceDate = new Date(invoice.invoiceDate);
+          const month = `${invoiceDate.getFullYear()}-${(invoiceDate.getMonth() + 1).toString().padStart(2, "0")}`;
+          const quarter = `${invoiceDate.getFullYear()}-Q${Math.ceil((invoiceDate.getMonth() + 1) / 3)}`;
           
           // Create a deterministic ID for the GST record
           const gstRecordId = `gst_${invoice.id}`;
@@ -87,10 +87,10 @@ export function useGST() {
             type: "collected",
             amount: invoice.totalAmount,
             gstAmount: invoice.gstAmount,
-            date: invoice.createdAt,
+            date: invoice.invoiceDate,
             month,
             quarter,
-            year: date.getFullYear().toString(),
+            year: invoiceDate.getFullYear().toString(),
             invoiceId: invoice.id,
             description: `GST from invoice #${invoice.invoiceNumber}`,
             status: "unfiled",
