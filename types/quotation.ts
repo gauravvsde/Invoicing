@@ -1,5 +1,6 @@
 export interface QuotationItem {
   id: string
+  title: string
   description: string
   quantity: number
   rate: number

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useQuotations } from "./use-quotations"
 import { useInvoices } from "./use-invoices"
 import { useFirestore } from "./useFirestore"
-import { orderBy, where, doc, deleteDoc } from "firebase/firestore"
+import { orderBy, where, doc, deleteDoc, setDoc, getDoc, writeBatch } from "firebase/firestore"
 import { db } from "../lib/firebase"
 import type { GSTRecord, GSTSummary, GSTReturn } from "../types/gst"
+import type { FirestoreError } from "firebase/firestore"
 
 export function useGST() {
   const { data: gstRecords, loading, error, saveDocument, deleteDocument } = 
@@ -25,22 +26,55 @@ export function useGST() {
 
   const { invoices } = useInvoices()
 
-  // Generate GST records from invoices
+  // Track processed invoice IDs to prevent duplicate processing
+  const processedInvoiceIds = useRef<Set<string>>(new Set());
+
+  // Generate GST records from invoices with duplicate prevention
   const generateGSTRecords = useCallback(async () => {
+    if (!invoices.length) return;
+
     try {
-      const newRecords: Omit<GSTRecord, 'id'>[] = []
+      // Get invoices that need GST records and haven't been processed yet
+      const invoicesToProcess = invoices.filter(
+        invoice => 
+          invoice.gstAmount > 0 && 
+          !processedInvoiceIds.current.has(invoice.id) &&
+          !gstRecords.some(r => r.invoiceId === invoice.id)
+      );
 
-      invoices.forEach((invoice) => {
-        const hasExistingRecord = gstRecords.some(r => r.invoiceId === invoice.id)
-        if (!hasExistingRecord && invoice.gstAmount > 0) {
-          const date = new Date(invoice.createdAt)
-          const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`
-          const quarter = `${date.getFullYear()}-Q${Math.ceil((date.getMonth() + 1) / 3)}`
+      if (!invoicesToProcess.length) return;
 
-          newRecords.push({
+      console.log(`Processing ${invoicesToProcess.length} invoices for GST records`);
+
+      // Process in batches to avoid too many concurrent operations
+      const BATCH_SIZE = 5;
+      const batch = writeBatch(db);
+      let batchCount = 0;
+
+      for (const invoice of invoicesToProcess) {
+        try {
+          // Mark as processed immediately to prevent duplicate processing
+          processedInvoiceIds.current.add(invoice.id);
+          
+          const date = new Date(invoice.createdAt);
+          const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
+          const quarter = `${date.getFullYear()}-Q${Math.ceil((date.getMonth() + 1) / 3)}`;
+          
+          // Create a deterministic ID for the GST record
+          const gstRecordId = `gst_${invoice.id}`;
+          
+          // Double-check if the record exists (in case of race conditions)
+          const existingDoc = await getDoc(doc(db, 'gstRecords', gstRecordId));
+          if (existingDoc.exists()) {
+            console.log(`GST record already exists for invoice ${invoice.id}`);
+            continue;
+          }
+          
+          // Create the GST record
+          const newRecord: Omit<GSTRecord, 'id'> = {
             type: "collected",
             amount: invoice.totalAmount,
-            gstAmount: invoice.gstAmount, // Directly use the total GST amount from the invoice
+            gstAmount: invoice.gstAmount,
             date: invoice.createdAt,
             month,
             quarter,
@@ -51,23 +85,64 @@ export function useGST() {
             paymentStatus: invoice.paid ? "paid" : "pending",
             customerName: invoice.customerName,
             customerGSTIN: invoice.customerGSTIN || "",
-          })
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            _createdBy: typeof window !== 'undefined' ? window.location.href : 'server'
+          };
+          
+          // Add to batch
+          batch.set(doc(db, 'gstRecords', gstRecordId), newRecord);
+          batchCount++;
+          
+          // Execute batch if we've reached batch size
+          if (batchCount >= BATCH_SIZE) {
+            await batch.commit();
+            batchCount = 0;
+          }
+        } catch (error) {
+          console.error(`Error processing invoice ${invoice.id}:`, error);
+          // Remove from processed set to retry later
+          processedInvoiceIds.current.delete(invoice.id);
         }
-      })
-
-      if (newRecords.length > 0) {
-        await Promise.all(newRecords.map(record => saveDocument(record)))
       }
+      
+      // Commit any remaining operations in the batch
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+      
+      console.log('Finished processing GST records');
     } catch (err) {
       console.error("Error generating GST records:", err)
       setApiError("Failed to generate GST records")
     }
   }, [invoices, gstRecords, saveDocument])
 
+  // Track if we're currently processing to prevent concurrent runs
+  const isProcessing = useRef(false);
+  const cleanupRef = useRef<() => void>(() => {});
+
+  // Effect to generate GST records when invoices change
   useEffect(() => {
-    if (invoices.length > 0) {
-      generateGSTRecords();
-    }
+    // Skip if no invoices or already processing
+    if (invoices.length === 0 || isProcessing.current) return;
+
+    // Set processing flag
+    isProcessing.current = true;
+    
+    // Generate records
+    generateGSTRecords().finally(() => {
+      isProcessing.current = false;
+    });
+
+    // Cleanup function to cancel any in-progress operations
+    return () => {
+      // This will be called when the component unmounts or before re-running the effect
+      isProcessing.current = false;
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
   }, [invoices, generateGSTRecords]);
 
   // Add a manual GST record

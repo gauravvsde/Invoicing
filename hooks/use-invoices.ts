@@ -36,6 +36,7 @@ export function useInvoices() {
 
     const invoiceData: Omit<Invoice, "id"> = {
       invoiceNumber,
+      invoiceDate: now.toISOString().split('T')[0],
       invoiceName: `Invoice for ${quotation.quotationNumber}`,
       companyName: quotation.companyName,
       companyEmail: quotation.companyEmail,
@@ -51,6 +52,7 @@ export function useInvoices() {
       notes: quotation.notes,
       items: quotation.items.map((item) => ({
         id: item.id,
+        title: item.title || '',
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,

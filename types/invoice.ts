@@ -1,5 +1,6 @@
 export interface InvoiceItem {
   id: string
+  title: string
   description: string
   quantity: number
   rate: number
@@ -38,6 +39,8 @@ export interface Invoice {
   companyGSTIN?: string
   companyPAN?: string
   companyVendorCode?: string
+  companyState?: string
+  companyStateCode?: string
   bankDetails?: BankDetails
   quotationId?: string // Reference to original quotation if converted
   customerName: string
@@ -47,6 +50,7 @@ export interface Invoice {
   customerGSTIN?: string
   paid?: boolean // For backward compatibility with GST calculations
   status: "draft" | "sent" | "paid" | "overdue" | "cancelled" | "partially_paid"
+  invoiceDate: string
   dueDate: string
   paidDate?: string
   paidAmount?: number

@@ -25,10 +25,15 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   const [formData, setFormData] = useState<Omit<Invoice, 'id' | 'items' | 'subtotal' | 'gstAmount' | 'sgstAmount' | 'cgstAmount' | 'totalAmount' | 'createdAt' | 'updatedAt' | 'paid' | 'paidDate' | 'paidAmount' | 'paymentHistory'>>(() => ({
     invoiceNumber: "",
     invoiceName: "",
-    companyName: "Your Company Name",
-    companyEmail: "company@example.com",
-    companyPhone: "+91 9876543210",
-    companyAddress: "Your Company Address",
+    companyName: "Pratham Urja Solutions",
+    companyEmail: "prathamurjasolutions@gmail.com",
+    companyPhone: "+919045013044",
+    companyAddress: "Lodhi puram Peepal Adda, Etah, Uttar Pradesh, India - 207001",
+    companyGSTIN: "09ABHFP5659C1ZZ",
+    companyPAN: "ABHFP5659C",
+    companyState: "Uttar Pradesh",
+    companyVendorCode: "ETAH2507263060",
+    companyStateCode: "09",
     companyLogo: "",
     customerName: "",
     customerEmail: "",
@@ -36,20 +41,26 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
     customerAddress: "",
     customerGSTIN: "",
     status: "draft",
+    invoiceDate: new Date().toISOString().split('T')[0], // Current date as default
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     notes: "",
   }))
-  const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", description: "", quantity: 1, rate: 0, gstRate: 18 }])
+  const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
 
   useEffect(() => {
     if (invoice) {
       setFormData({
         invoiceNumber: invoice.invoiceNumber,
         invoiceName: invoice.invoiceName || "",
-        companyName: invoice.companyName || "Your Company Name",
-        companyEmail: invoice.companyEmail || "company@example.com",
-        companyPhone: invoice.companyPhone || "+91 9876543210",
-        companyAddress: invoice.companyAddress || "Your Company Address",
+        companyName: invoice.companyName || "Pratham Urja Solutions",
+        companyEmail: invoice.companyEmail || "prathamurjasolutions@gmail.com",
+        companyPhone: invoice.companyPhone || "+919045013044",
+        companyAddress: invoice.companyAddress || "Lodhi puram Peepal Adda, Etah, Uttar Pradesh, India - 207001",
+        companyGSTIN: invoice.companyGSTIN || "09ABHFP5659C1ZZ",
+        companyPAN: invoice.companyPAN || "ABHFP5659C",
+        companyState: invoice.companyState || "Uttar Pradesh",
+        companyVendorCode: invoice.companyVendorCode || "ETAH2507263060",
+        companyStateCode: invoice.companyStateCode || "09",
         companyLogo: invoice.companyLogo || "",
         customerName: invoice.customerName,
         customerEmail: invoice.customerEmail,
@@ -57,10 +68,15 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
         customerAddress: invoice.customerAddress,
         customerGSTIN: invoice.customerGSTIN || "",
         status: invoice.status,
+        invoiceDate: invoice.invoiceDate || new Date().toISOString().split('T')[0],
         dueDate: invoice.dueDate,
         notes: invoice.notes,
       });
-      setItems(invoice.items);
+      setItems(invoice.items.map(item => ({
+        ...item,
+        title: item.title || '',
+        description: item.description || ''
+      })));
     } else {
       // Generate new invoice number
       const now = new Date()
@@ -84,6 +100,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   const addItem = () => {
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
+      title: "",
       description: "",
       quantity: 1,
       rate: 0,
@@ -122,6 +139,14 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   const calculateTotal = () => {
     return calculateSubtotal() + calculateGSTAmount();
   };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,6 +262,38 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                 <CardTitle>Customer Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                    <Input
+                      id="invoiceNumber"
+                      name="invoiceNumber"
+                      value={formData.invoiceNumber}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceName">Invoice Name</Label>
+                    <Input
+                      id="invoiceName"
+                      name="invoiceName"
+                      value={formData.invoiceName}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, invoiceName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceDate">Invoice Date</Label>
+                    <Input
+                      type="date"
+                      id="invoiceDate"
+                      name="invoiceDate"
+                      value={formData.invoiceDate}
+                      onChange={handleDateChange}
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="customerName">Customer Name *</Label>
@@ -313,15 +370,26 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                         Remove
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      <div className="md:col-span-2">
-                        <Label>Description</Label>
-                        <Input
-                          value={item.description}
-                          onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                          placeholder="Item description"
-                        />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Item Title *</Label>
+                          <Input
+                            value={item.title}
+                            onChange={(e) => updateItem(item.id, 'title', e.target.value)}
+                            placeholder="Enter item title"
+                          />
+                        </div>
+                        <div>
+                          <Label>Description</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                            placeholder="Item description (optional)"
+                          />
+                        </div>
                       </div>
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div>
                         <Label>Qty</Label>
                         <Input
@@ -341,10 +409,11 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                           onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
                         />
                       </div>
-                      <div>
-                        <Label>GST (%)</Label>
+                    </div>
+                    <div>
+                      <Label>GST (%)</Label>
                         <Select
-                          value={item.gstRate.toString()}
+                          value={item.gstRate?.toString() || '0'}
                           onValueChange={(value) => updateItem(item.id, 'gstRate', parseFloat(value))}
                         >
                           <SelectTrigger>

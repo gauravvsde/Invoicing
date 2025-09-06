@@ -18,6 +18,7 @@ export interface GSTRecord {
   customerGSTIN?: string
   createdAt?: string
   updatedAt?: string
+  _createdBy?: string
 }
 
 export interface GSTSummary {
