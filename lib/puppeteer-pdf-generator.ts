@@ -204,9 +204,9 @@ export class PuppeteerPDFGenerator {
         <meta charset="UTF-8">
         <title>${docNumber} - ${from.name}</title>
         <style>
-          @page { size: A4; margin: 20mm; }
+          @page { size: A4; margin: 10mm; }
           * { box-sizing: border-box; }
-          body { font-family: Inter, "Helvetica Neue", Arial, sans-serif; color: #111827; margin: 0; }
+          body { font-family: Inter, "Helvetica Neue", Arial, sans-serif; color: #111827; margin: 0; font-size: 14px; }
           .wrap { padding: 0; }
 
           /* Header */
@@ -227,23 +227,23 @@ export class PuppeteerPDFGenerator {
           }
           .card h3 {
             color: ${primary};
-            margin: 0 0 8px 0;
-             font-weight: 400;
-            font-size: 16px;
+            margin: 0 0 10px 0;
+            font-weight: 400;
+            font-size: 18px;
           }
-          .card .line { font-size: 12px; line-height: 1.5; }
+          .card .line { font-size: 13px; line-height: 1.6; }
           .muted { color: ${textMuted}; }
 
           /* Supply row */
           .supply {
-            display: flex; justify-content: space-between; margin: 14px 2px 8px;
-            font-size: 12px; color: #111827;
+            display: flex; justify-content: space-between; margin: 16px 2px 10px;
+            font-size: 13px; color: #111827;
           }
           .supply span.label { color: ${textMuted}; }
 
           /* Table */
-          table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-          th, td { padding: 10px 8px; font-size: 12px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          th, td { padding: 11px 9px; font-size: 13px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
           thead th { background: ${primary}; color: #fff; border-bottom: none; }
           thead th:first-child { border-top-left-radius: 8px; }
           thead th:last-child  { border-top-right-radius: 8px; }
@@ -307,7 +307,7 @@ export class PuppeteerPDFGenerator {
           }
 
           /* Terms */
-          .terms { margin-top: 14px; font-size: 12px; }
+          .terms { margin-top: 14px; font-size: 13px; }
           .terms h4 { margin: 0 0 6px 0; color: ${primary}; }
           .terms ol { margin: 0 0 4px 18px; padding: 0; }
           .terms li { margin: 2px 0; }
@@ -335,13 +335,13 @@ export class PuppeteerPDFGenerator {
           <div class="cards">
             <div class="card">
               <h3>${isInvoice ? 'Billed By' : 'Quotation From'}</h3>
-              <div class="line"><strong>${this.esc(from.name)}</strong></div>
-              ${from.address ? `<div class="line">${this.esc(from.address)}</div>` : ''}
-              ${from.gstin ? `<div class="line"><strong>GSTIN:</strong> ${this.esc(from.gstin)}</div>` : ''}
-              ${from.pan ? `<div class="line"><strong>PAN:</strong> ${this.esc(from.pan)}</div>` : ''}
-              ${from.email ? `<div class="line"><strong>Email:</strong> ${this.esc(from.email)}</div>` : ''}
-              ${from.phone ? `<div class="line"><strong>Phone:</strong> ${this.esc(from.phone)}</div>` : ''}
-              ${from.vendorCode ? `<div class="line"><strong>UPNEDA Vendor Code:</strong> ${this.esc(from.vendorCode)}</div>` : ''}
+              <div class="line"><strong>${this.esc(from.name || 'Pratham Urja Solutions')}</strong></div>
+              <div class="line">${this.esc(from.address || 'Lodhi puram Peepal Adda, Etah, Uttar Pradesh, India - 207001')}</div>
+              <div class="line"><strong>GSTIN:</strong> ${this.esc(from.gstin || '09ABHFP5659C1ZZ')}</div>
+              ${!isInvoice ? `<div class="line"><strong>PAN:</strong> ${this.esc(from.pan || 'ABHFP5659C')}</div>` : ''}
+              <div class="line"><strong>Email:</strong> ${this.esc(from.email || 'prathamurjasolutions@gmail.com')}</div>
+              <div class="line"><strong>Phone:</strong> ${this.esc(from.phone || '+919045013044')}</div>
+              ${!isInvoice ? `<div class="line"><strong>UPNEDA Vendor Code:</strong> ${this.esc(from.vendorCode || 'ETAH2507263060')}</div>` : ''}
             </div>
 
             <div class="card">

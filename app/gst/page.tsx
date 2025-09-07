@@ -1,5 +1,10 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { FirestoreError } from "firebase/firestore"
+import { toast } from "sonner"
+import type { TimeRange } from "@/types/gst-filters"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,15 +15,13 @@ import { GSTChart } from "@/components/gst-chart"
 import { GSTRecordsTable } from "@/components/gst-records-table"
 import { GSTReturnsTable } from "@/components/gst-returns-table"
 import { AddGSTRecordDialog } from "@/components/add-gst-record-dialog"
+import { GSTFilters } from "@/components/gst/gst-filters"
 import { PDFGenerator } from "@/lib/pdf-generator"
 import { useGST } from "@/hooks/use-gst"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { FirestoreError } from "firebase/firestore"
 
 export default function GSTDashboard() {
   const [loadingTimeout, setLoadingTimeout] = useState(false)
-  
+  const [searchTerm, setSearchTerm] = useState("")
   // Set a loading timeout to prevent infinite loading
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -38,15 +41,18 @@ export default function GSTDashboard() {
     getCurrentMonthSummary,
     getGSTSummary,
     fileGSTReturn,
-    error: gstError
+    error: gstError,
+    filters,
+    updateFilters,
+    timeRange,
+    exportToExcel
   } = useGST()
+  
+  const [currentTimeRange, setCurrentTimeRange] = useState<TimeRange>('monthly')
   
   const loading = gstLoading && !loadingTimeout
   const router = useRouter()
   const [showAddRecord, setShowAddRecord] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [dateFilter, setDateFilter] = useState("all")
 
   if (loading) {
     return (
@@ -90,27 +96,26 @@ export default function GSTDashboard() {
 
   const filteredSummaries = summaries.filter((summary) => {
     if (!summary || !summary.month) return false;
-    const period = summary.month;
-    const periodDate = new Date(period + "-01");
-
+    
+    // Parse the period (format: 'YYYY-MM')
+    const [year, month] = summary.month.split('-').map(Number);
+    
+    // Apply filters
+    if (filters.year && year !== filters.year) return false;
+    if (filters.month && month !== filters.month) return false;
+    
+    const periodDate = new Date(year, month - 1);
+    const periodString = summary.month; // Use the month as the period string
+    
     const matchesSearch =
       searchTerm === "" ||
-      period.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      periodString.toLowerCase().includes(searchTerm.toLowerCase()) ||
       periodDate.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
       }).toLowerCase().includes(searchTerm.toLowerCase());
 
-    const currentYear = new Date().getFullYear().toString();
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const matchesDate =
-      dateFilter === "all" ||
-      (dateFilter === "current-year" && period.startsWith(currentYear)) ||
-      (dateFilter === "last-6-months" && periodDate >= sixMonthsAgo);
-
-    return matchesSearch && matchesDate;
+    return matchesSearch;
   });
 
   const handleCreateMonthlyReturn = async () => {
@@ -118,9 +123,11 @@ export default function GSTDashboard() {
       const now = new Date()
       const period = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}`
       const records = gstRecords.filter(record => record.month === period)
-      await fileGSTReturn(period, records, 'monthly')
+      // TODO: Implement fileGSTReturn or use appropriate function
+      console.log("Would file monthly return for period:", period, "with", records.length, "records")
     } catch (error) {
       console.error("Error creating monthly return:", error)
+      toast.error("Failed to create monthly return")
     }
   }
 
@@ -130,9 +137,11 @@ export default function GSTDashboard() {
       const quarter = Math.ceil((now.getMonth() + 1) / 3)
       const period = `${now.getFullYear()}-Q${quarter}`
       const records = gstRecords.filter(record => record.quarter === period)
-      await fileGSTReturn(period, records, 'quarterly')
+      // TODO: Implement fileGSTReturn or use appropriate function
+      console.log("Would file quarterly return for period:", period, "with", records.length, "records")
     } catch (error) {
       console.error("Error creating quarterly return:", error)
+      toast.error("Failed to create quarterly return")
     }
   }
 
@@ -173,6 +182,35 @@ export default function GSTDashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
+        {/* GST Filters */}
+        <div className="mb-8">
+          <GSTFilters 
+            filters={filters}
+            timeRange={currentTimeRange}
+            onFilterChange={updateFilters}
+            onTimeRangeChange={(newTimeRange) => setCurrentTimeRange(newTimeRange as TimeRange)}
+            onExport={async (includeDetails) => {
+              try {
+                const success = await exportToExcel({ 
+                  ...filters, 
+                  includeDetails 
+                });
+                if (success) {
+                  toast.success(includeDetails 
+                    ? 'Full report exported successfully' 
+                    : 'Summary exported successfully');
+                } else {
+                  throw new Error('Export failed');
+                }
+                return success;
+              } catch (error) {
+                toast.error('Failed to export. Please try again.');
+                return false;
+              }
+            }}
+          />
+        </div>
+        
         {/* GST Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -273,14 +311,106 @@ export default function GSTDashboard() {
               className="pl-10"
             />
           </div>
-          <Select value={dateFilter} onValueChange={setDateFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by date" />
+          <div className="flex gap-2">
+            <Select 
+              value={currentTimeRange} 
+              onValueChange={(value) => {
+                const newTimeRange = value as 'monthly' | 'yearly'
+                setCurrentTimeRange(newTimeRange)
+                
+                // When switching to yearly view, remove the month filter
+                if (newTimeRange === 'yearly') {
+                  updateFilters({ month: undefined })
+                } else {
+                  // When switching back to monthly view, set to current month if not set
+                  updateFilters({ 
+                    month: filters.month || new Date().getMonth() + 1 
+                  })
+                }
+              }}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="View" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {currentTimeRange === 'monthly' && (
+              <Select
+                value={filters.month?.toString() || ''}
+                onValueChange={(value) => updateFilters({ month: parseInt(value) })}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const month = new Date(0, i).toLocaleString('default', { month: 'long' })
+                    return (
+                      <SelectItem key={i} value={(i + 1).toString()}>
+                        {month}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            )}
+            
+            <Select
+              value={filters.year?.toString() || ''}
+              onValueChange={(value) => updateFilters({ year: parseInt(value) })}
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 5 }, (_, i) => {
+                  const year = new Date().getFullYear() - i
+                  return (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          {timeRange === 'monthly' && (
+            <Select 
+              value={filters.month?.toString() || ''}
+              onValueChange={(value) => updateFilters({ month: parseInt(value) })}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => ({
+                  value: (i + 1).toString(),
+                  label: new Date(0, i).toLocaleString('default', { month: 'long' })
+                })).map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select 
+            value={filters.year?.toString() || ''}
+            onValueChange={(value) => updateFilters({ year: parseInt(value) })}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Select year" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="current-year">Current Year</SelectItem>
-              <SelectItem value="last-6-months">Last 6 Months</SelectItem>
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -339,7 +469,15 @@ export default function GSTDashboard() {
         {/* GST Records and Returns */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GSTRecordsTable />
-          <GSTReturnsTable />
+          <GSTReturnsTable 
+            gstReturns={gstReturns}
+            onUpdateReturn={async (id, updates) => {
+              // TODO: Implement update GST return functionality
+              console.log("Would update GST return", id, "with", updates);
+              toast.info("Update GST return functionality coming soon");
+            }}
+            isLoading={loading}
+          />
         </div>
       </main>
 
