@@ -123,19 +123,25 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
     return items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
   };
 
+  // Calculate GST for a single item
+  const calculateItemGST = (item: InvoiceItem): number => {
+    const itemTotal = item.quantity * item.rate;
+    return (itemTotal * (item.gstRate || 0)) / 100;
+  };
+
+  // Calculate total GST for all items
   const calculateGSTAmount = (): number => {
-    return items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.rate;
-      return sum + (itemTotal * (item.gstRate || 0)) / 100;
-    }, 0);
+    return items.reduce((sum, item) => sum + calculateItemGST(item), 0);
   };
 
+  // Calculate SGST (50% of total GST)
   const calculateSGSTAmount = (): number => {
-    return calculateGSTAmount() / 2; // 50% of total GST is SGST
+    return calculateGSTAmount() / 2;
   };
 
-  const calculateCGSTAmount = () => {
-    return calculateGSTAmount() / 2; // Split GST equally between SGST and CGST
+  // Calculate CGST (50% of total GST)
+  const calculateCGSTAmount = (): number => {
+    return calculateGSTAmount() / 2;
   };
 
   const calculateTotal = () => {
@@ -499,15 +505,15 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                     <span>₹{calculateSubtotal().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>GST ({calculateGSTRate()}%)</span>
+                    <span>Total GST</span>
                     <span>₹{calculateGSTAmount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground text-sm">
-                    <span>SGST ({calculateGSTRate() / 2}%)</span>
+                    <span>SGST</span>
                     <span>₹{calculateSGSTAmount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground text-sm">
-                    <span>CGST ({calculateGSTRate() / 2}%)</span>
+                    <span>CGST</span>
                     <span>₹{calculateCGSTAmount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">

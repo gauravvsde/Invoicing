@@ -604,11 +604,15 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
                           <span>₹{calculateSubtotal().toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>SGST (9%)</span>
+                          <span>Total GST</span>
+                          <span>₹{calculateGSTAmount().toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>SGST</span>
                           <span>₹{calculateSGSTAmount().toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>CGST (9%)</span>
+                          <span>CGST</span>
                           <span>₹{calculateCGSTAmount().toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
