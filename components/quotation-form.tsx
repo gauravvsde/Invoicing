@@ -23,7 +23,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
   const { saveQuotation } = useQuotations()
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
-  const [formData, setFormData] = useState<Omit<Quotation, 'id' | 'items' | 'subtotal' | 'gstAmount' | 'sgstAmount' | 'cgstAmount' | 'totalAmount' | 'createdAt' | 'updatedAt'>>(() => ({
+  const [formData, setFormData] = useState<Omit<Quotation, 'id' | 'items' | 'subtotal' | 'gstAmount' | 'sgstAmount' | 'cgstAmount' | 'totalAmount' | 'createdAt' | 'updatedAt'> & { roundOff: number }>(() => ({
     quotationNumber: "",
     quotationName: "",
     companyName: "Pratham Urja Solutions",
@@ -44,6 +44,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
     status: "draft",
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     notes: "",
+    roundOff: 0,
   }))
   const [items, setItems] = useState<QuotationItem[]>([{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
 
@@ -70,6 +71,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
         status: quotation.status || "draft",
         validUntil: quotation.validUntil || "",
         notes: quotation.notes || "",
+        roundOff: (quotation as any).roundOff || 0,
         countryOfSupply: quotation.countryOfSupply || 'India',
         placeOfSupply: quotation.placeOfSupply || 'Uttar Pradesh',
         bankDetails: quotation.bankDetails || {
@@ -139,7 +141,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
   };
 
   const calculateTotal = (): number => {
-    return calculateSubtotal() + calculateGSTAmount();
+    return calculateSubtotal() + calculateGSTAmount() - (formData.roundOff || 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -217,6 +219,7 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
         gstAmount: calculateGSTAmount(),
         sgstAmount: calculateGSTAmount() / 2,
         cgstAmount: calculateGSTAmount() / 2,
+        roundOff: formData.roundOff || 0,
         totalAmount: calculateTotal(),
         id: quotation?.id || '',
         createdAt: quotation?.createdAt || new Date().toISOString(),
@@ -237,7 +240,6 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
         status: formData.status as 'draft' | 'sent' | 'approved' | 'rejected',
         validUntil: formData.validUntil,
         notes: formData.notes || '',
-        roundOff: 0
       };
       
       console.log('🟡 [QuotationForm] Generating PDF for:', {
@@ -608,6 +610,24 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
                         <div className="flex justify-between">
                           <span>CGST (9%)</span>
                           <span>₹{calculateCGSTAmount().toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Round Off</span>
+                          <div className="flex items-center">
+                            <span className="mr-2">-</span>
+                            <Input
+                              type="text"
+                              className="w-24 h-8 text-right"
+                              value={formData.roundOff || ''}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                setFormData(prev => ({
+                                  ...prev,
+                                  roundOff: parseFloat(value) || 0
+                                }));
+                              }}
+                            />
+                          </div>
                         </div>
                         <div className="flex justify-between font-bold border-t pt-2 mt-2">
                           <span>Total</span>

@@ -22,7 +22,7 @@ interface InvoiceFormProps {
 export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   const { saveInvoice } = useInvoices()
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState<Omit<Invoice, 'id' | 'items' | 'subtotal' | 'gstAmount' | 'sgstAmount' | 'cgstAmount' | 'totalAmount' | 'createdAt' | 'updatedAt' | 'paid' | 'paidDate' | 'paidAmount' | 'paymentHistory'>>(() => ({
+  const [formData, setFormData] = useState<Omit<Invoice, 'id' | 'items' | 'subtotal' | 'gstAmount' | 'sgstAmount' | 'cgstAmount' | 'totalAmount' | 'createdAt' | 'updatedAt' | 'paid' | 'paidDate' | 'paidAmount' | 'paymentHistory'> & { roundOff: number }>(() => ({
     invoiceNumber: "",
     invoiceName: "",
     companyName: "Pratham Urja Solutions",
@@ -44,6 +44,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
     invoiceDate: new Date().toISOString().split('T')[0], // Current date as default
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     notes: "",
+    roundOff: 0,
   }))
   const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
 
@@ -71,6 +72,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
         invoiceDate: invoice.invoiceDate || new Date().toISOString().split('T')[0],
         dueDate: invoice.dueDate,
         notes: invoice.notes,
+        roundOff: (invoice as any).roundOff || 0,
       });
       setItems(invoice.items.map(item => ({
         ...item,
@@ -137,7 +139,7 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateGSTAmount();
+    return calculateSubtotal() + calculateGSTAmount() - (formData.roundOff || 0);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -507,6 +509,23 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                   <div className="flex justify-between text-muted-foreground text-sm">
                     <span>CGST ({calculateGSTRate() / 2}%)</span>
                     <span>₹{calculateCGSTAmount().toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Round Off</span>
+                    <div className="flex items-center">
+                      <span className="mr-2">-</span>
+                      <Input
+                        type="text"
+                        min="0"
+                        step="0.01"
+                        className="w-24 h-8 text-right"
+                        value={formData.roundOff || ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          roundOff: parseFloat(e.target.value) || 0
+                        }))}
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
                     <span>Total</span>
