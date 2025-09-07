@@ -622,15 +622,30 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
                           <div className="flex items-center">
                             <span className="text-sm text-muted-foreground mr-2">-</span>
                             <Input
-                              type="text"
+                              type="number"
+                              step="0.01"
+                              min="0"
                               className="w-24 h-8 text-right text-sm"
                               value={formData.roundOff || ''}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/[^0-9.]/g, '');
-                                setFormData(prev => ({
-                                  ...prev,
-                                  roundOff: parseFloat(value) || 0
-                                }));
+                                const value = e.target.value;
+                                // Allow decimal numbers with up to 2 decimal places
+                                if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    roundOff: value === '' ? 0 : parseFloat(value)
+                                  }));
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // Format to 2 decimal places on blur
+                                const value = parseFloat(e.target.value);
+                                if (!isNaN(value)) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    roundOff: parseFloat(value.toFixed(2))
+                                  }));
+                                }
                               }}
                             />
                           </div>

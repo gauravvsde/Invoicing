@@ -521,15 +521,31 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                     <div className="flex items-center">
                       <span className="mr-2">-</span>
                       <Input
-                        type="text"
-                        min="0"
+                        type="number"
                         step="0.01"
-                        className="w-24 h-8 text-right"
+                        min="0"
+                        className="w-24 h-8 text-right text-sm"
                         value={formData.roundOff || ''}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          roundOff: parseFloat(e.target.value) || 0
-                        }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow decimal numbers with up to 2 decimal places
+                          if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                            setFormData(prev => ({
+                              ...prev,
+                              roundOff: value === '' ? 0 : parseFloat(value)
+                            }));
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Format to 2 decimal places on blur
+                          const value = parseFloat(e.target.value);
+                          if (!isNaN(value)) {
+                            setFormData(prev => ({
+                              ...prev,
+                              roundOff: parseFloat(value.toFixed(2))
+                            }));
+                          }
+                        }}
                       />
                     </div>
                   </div>
