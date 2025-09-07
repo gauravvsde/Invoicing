@@ -335,13 +335,13 @@ export class PuppeteerPDFGenerator {
           <div class="cards">
             <div class="card">
               <h3>${isInvoice ? 'Billed By' : 'Quotation From'}</h3>
-              <div class="line"><strong>${this.esc(from.name)}</strong></div>
-              ${from.address ? `<div class="line">${this.esc(from.address)}</div>` : ''}
-              ${from.gstin ? `<div class="line"><strong>GSTIN:</strong> ${this.esc(from.gstin)}</div>` : ''}
-              ${from.pan ? `<div class="line"><strong>PAN:</strong> ${this.esc(from.pan)}</div>` : ''}
-              ${from.email ? `<div class="line"><strong>Email:</strong> ${this.esc(from.email)}</div>` : ''}
-              ${from.phone ? `<div class="line"><strong>Phone:</strong> ${this.esc(from.phone)}</div>` : ''}
-              ${from.vendorCode ? `<div class="line"><strong>UPNEDA Vendor Code:</strong> ${this.esc(from.vendorCode)}</div>` : ''}
+              <div class="line"><strong>${this.esc(from.name || 'Pratham Urja Solutions')}</strong></div>
+              <div class="line">${this.esc(from.address || 'Lodhi puram Peepal Adda, Etah, Uttar Pradesh, India - 207001')}</div>
+              <div class="line"><strong>GSTIN:</strong> ${this.esc(from.gstin || '09ABHFP5659C1ZZ')}</div>
+              ${!isInvoice ? `<div class="line"><strong>PAN:</strong> ${this.esc(from.pan || 'ABHFP5659C')}</div>` : ''}
+              <div class="line"><strong>Email:</strong> ${this.esc(from.email || 'prathamurjasolutions@gmail.com')}</div>
+              <div class="line"><strong>Phone:</strong> ${this.esc(from.phone || '+919045013044')}</div>
+              ${!isInvoice ? `<div class="line"><strong>UPNEDA Vendor Code:</strong> ${this.esc(from.vendorCode || 'ETAH2507263060')}</div>` : ''}
             </div>
 
             <div class="card">

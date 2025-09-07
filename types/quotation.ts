@@ -31,6 +31,8 @@ export interface Quotation {
   companyGSTIN?: string
   companyPAN?: string
   companyVendorCode?: string
+  companyState?: string
+  companyStateCode?: string
   bankDetails?: BankDetails
   customerName: string
   customerEmail: string

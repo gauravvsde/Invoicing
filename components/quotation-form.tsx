@@ -56,19 +56,36 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
         companyEmail: quotation.companyEmail || "prathamurjasolutions@gmail.com",
         companyPhone: quotation.companyPhone || "+919045013044",
         companyAddress: quotation.companyAddress || "Lodhi puram Peepal Adda, Etah, Uttar Pradesh, India - 207001",
+        companyGSTIN: quotation.companyGSTIN || "09ABHFP5659C1ZZ",
+        companyPAN: quotation.companyPAN || "ABHFP5659C",
+        companyState: quotation.companyState || "Uttar Pradesh",
+        companyVendorCode: quotation.companyVendorCode || "ETAH2507263060",
+        companyStateCode: quotation.companyStateCode || "09",
         companyLogo: quotation.companyLogo || "",
         customerName: quotation.customerName || "",
         customerEmail: quotation.customerEmail || "",
         customerPhone: quotation.customerPhone || "",
         customerAddress: quotation.customerAddress || "",
+        customerGSTIN: quotation.customerGSTIN || "",
         status: quotation.status || "draft",
         validUntil: quotation.validUntil || "",
         notes: quotation.notes || "",
+        countryOfSupply: quotation.countryOfSupply || 'India',
+        placeOfSupply: quotation.placeOfSupply || 'Uttar Pradesh',
+        bankDetails: quotation.bankDetails || {
+          accountName: quotation.companyName,
+          accountNumber: '',
+          ifsc: '',
+          accountType: 'Current',
+          bankName: ''
+        },
+        reference: quotation.reference || undefined,
       })
       setItems(quotation.items.map(item => ({
         ...item,
         title: item.title || '',
-        description: item.description || ''
+        description: item.description || '',
+        hsnCode: item.hsnCode || undefined,
       })) || [{ id: "1", title: "", description: "", quantity: 1, rate: 0, gstRate: 18 }])
     } else {
       // Generate new quotation number
