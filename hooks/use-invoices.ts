@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { getDoc, deleteDoc, where, query, getDocs } from "firebase/firestore"
+import { getDoc, deleteDoc, where, query, getDocs, setDoc } from "firebase/firestore"
 import { orderBy, doc, updateDoc, collection } from "firebase/firestore"
 import { db } from "../lib/firebase"
 import type { Invoice } from "../types/invoice"
@@ -134,14 +134,17 @@ export function useInvoices() {
         throw new Error("Invoice not found");
       }
 
-      const invoice = docSnap.data() as Invoice;
+      const invoice = { ...docSnap.data(), id: docSnap.id } as Invoice;
       const now = new Date();
-      const newInvoiceNumber = `INV-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${(invoices.length + 1).toString().padStart(4, '0')}`;
+      
+      // Generate a new unique ID for the duplicated invoice
+      const newInvoiceRef = doc(collection(db, 'invoices'));
       
       // Create a new invoice with updated fields
-      const duplicatedInvoiceData: Omit<Invoice, 'id'> = {
+      const duplicatedInvoiceData: Invoice = {
         ...invoice,
-        invoiceNumber: newInvoiceNumber,
+        id: newInvoiceRef.id,
+        invoiceNumber: `INV-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${(invoices.length + 1).toString().padStart(4, '0')}`,
         invoiceName: `${invoice.invoiceName || invoice.invoiceNumber} (Copy)`,
         status: "draft" as const,
         paidAmount: 0,
@@ -151,7 +154,9 @@ export function useInvoices() {
         dueDate: new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0] // 30 days from now
       };
 
-      return saveInvoice(duplicatedInvoiceData);
+      // Save the new invoice with the new ID
+      await setDoc(newInvoiceRef, duplicatedInvoiceData);
+      return newInvoiceRef.id;
     } catch (err) {
       console.error("Error duplicating invoice:", err);
       setApiError("Failed to duplicate invoice");
