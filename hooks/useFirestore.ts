@@ -21,6 +21,7 @@ import {
   Query
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 type CollectionPath = 'invoices' | 'quotations' | 'gstRecords' | 'gstReturns' | 'dealers';
 
@@ -53,8 +54,18 @@ export function useFirestore<T extends { id?: string }>(
     return { id: doc.id, ...processedData } as T;
   }, []);
 
+  const { user } = useAuth();
+
   // Subscribe to collection changes
   useEffect(() => {
+    // Only subscribe if user is authenticated
+    if (!user) {
+      console.log('[useFirestore] User not authenticated, skipping subscription');
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     console.log(`[useFirestore] Subscribing to collection: ${collectionPath}`);
     setLoading(true);
     
@@ -81,8 +92,11 @@ export function useFirestore<T extends { id?: string }>(
       }
     );
 
-    return () => unsubscribe();
-  }, [collectionPath, JSON.stringify(queryConstraints), parseDocument]);
+    return () => {
+      console.log(`[useFirestore] Unsubscribing from ${collectionPath}`);
+      unsubscribe();
+    };
+  }, [collectionPath, JSON.stringify(queryConstraints), parseDocument, user]);
 
   // Get a document by ID
   const getDocument = useCallback(async (id: string): Promise<T | null> => {

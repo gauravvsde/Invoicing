@@ -1,6 +1,7 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app"
 import { getFirestore, Firestore } from "firebase/firestore"
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics"
+import { getAuth, Auth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from "firebase/auth"
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -17,10 +18,12 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let analytics: Analytics | undefined;
+let auth: Auth;
 
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   db = getFirestore(app);
+  auth = getAuth(app);
   console.log('Firebase initialized successfully');
   
   // Initialize Analytics only in client-side and if supported
@@ -39,4 +42,21 @@ try {
   throw new Error('Failed to initialize Firebase');
 }
 
-export { db, analytics }
+// Auth functions
+export const signUp = (email: string, password: string) => {
+  return createUserWithEmailAndPassword(auth, email, password);
+};
+
+export const signIn = (email: string, password: string) => {
+  return signInWithEmailAndPassword(auth, email, password);
+};
+
+export const signOut = () => {
+  return firebaseSignOut(auth);
+};
+
+export const getCurrentUser = (): User | null => {
+  return auth.currentUser;
+};
+
+export { db, analytics, auth }

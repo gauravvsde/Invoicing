@@ -1,7 +1,13 @@
-import type React from "react"
-import type { Metadata } from "next"
 import { Space_Grotesk, DM_Sans } from "next/font/google"
 import "./globals.css"
+import { AuthProvider } from "@/contexts/AuthContext";
+import NavBar from "@/components/layout/NavBar";
+
+export const metadata = {
+  title: "GST Billing Pro",
+  description: "Professional GST billing and invoice management system",
+  generator: "v0.app",
+};
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -15,12 +21,6 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
 })
 
-export const metadata: Metadata = {
-  title: "GST Billing Pro",
-  description: "Professional GST billing and invoice management system",
-  generator: "v0.app",
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +28,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${dmSans.variable} antialiased`}>
-      <body className="font-sans bg-background text-foreground">{children}</body>
+      <body className="font-sans bg-background text-foreground">
+        <AuthProvider>
+          <NavBar />
+          <main className="min-h-[calc(100vh-4rem)]">
+            {children}
+          </main>
+        </AuthProvider>
+      </body>
     </html>
   )
 }
