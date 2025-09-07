@@ -32,10 +32,7 @@ export default function Login() {
             Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
-              sign up for a new account
-            </Link>
+            Please sign in to continue
           </p>
         </div>
         {error && (
