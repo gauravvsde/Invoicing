@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, collection, setDoc } from "firebase/firestore"
 import { db } from "../lib/firebase"
 import { orderBy } from "firebase/firestore"
 import type { Quotation } from "../types/quotation"
@@ -31,14 +31,17 @@ export function useQuotations() {
         throw new Error("Quotation not found");
       }
 
-      const quotation = docSnap.data() as Quotation;
+      const quotation = { ...docSnap.data(), id: docSnap.id } as Quotation;
       const now = new Date();
-      const newQuotationNumber = `QT-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${(quotations.length + 1).toString().padStart(4, '0')}`;
+      
+      // Generate a new unique ID for the duplicated quotation
+      const newQuotationRef = doc(collection(db, 'quotations'));
       
       // Create a new quotation with updated fields
-      const newQuotationData: Omit<Quotation, 'id'> = {
+      const newQuotationData: Quotation = {
         ...quotation,
-        quotationNumber: newQuotationNumber,
+        id: newQuotationRef.id,
+        quotationNumber: `QT-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${(quotations.length + 1).toString().padStart(4, '0')}`,
         quotationName: `${quotation.quotationName || quotation.quotationNumber} (Copy)`,
         status: "draft" as const,
         validUntil: new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 30 days from now
@@ -50,7 +53,9 @@ export function useQuotations() {
         }))
       };
 
-      return saveQuotation(newQuotationData);
+      // Save the new quotation with the new ID
+      await setDoc(newQuotationRef, newQuotationData);
+      return newQuotationRef.id;
     } catch (err) {
       console.error("Error duplicating quotation:", err);
       setApiError("Failed to duplicate quotation");
