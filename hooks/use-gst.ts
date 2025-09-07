@@ -22,9 +22,38 @@ export function useGST() {
   
   const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
 
+  // Generate query constraints based on current filters
+  const getQueryConstraints = useCallback((): any[] => {
+    const constraints: any[] = [orderBy('date', 'desc')];
+    
+    if (filters.month && filters.year) {
+      // Calculate start and end dates for the selected month
+      const startDate = new Date(filters.year, filters.month - 1, 1);
+      const endDate = new Date(filters.year, filters.month, 0); // Last day of the month
+      
+      // Format dates as YYYY-MM-DD strings for Firestore
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      // Add date range filters
+      constraints.push(
+        where('date', '>=', formatDate(startDate)),
+        where('date', '<=', formatDate(endDate))
+      );
+      
+      console.log('Filtering records between:', formatDate(startDate), 'and', formatDate(endDate));
+    }
+    
+    return constraints;
+  }, [filters.month, filters.year]);
+
   const { data: gstRecords, loading, error, saveDocument, deleteDocument } = 
     useFirestore<GSTRecord>('gstRecords', {
-      queryConstraints: [orderBy('date', 'desc')],
+      queryConstraints: getQueryConstraints(),
       includeTimestamps: true
     })
   
