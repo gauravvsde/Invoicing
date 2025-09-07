@@ -592,46 +592,67 @@ export function QuotationForm({ quotation, onClose }: QuotationFormProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Summary</CardTitle>
+                <div className="mt-8 w-full">
+                  <Card className="bg-card/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg font-semibold">Summary</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Subtotal</span>
-                          <span>₹{calculateSubtotal().toFixed(2)}</span>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-2.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="font-medium">₹{calculateSubtotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>SGST (9%)</span>
-                          <span>₹{calculateSGSTAmount().toFixed(2)}</span>
+                        <div className="pt-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">GST</span>
+                            <span className="font-medium">₹{calculateGSTAmount().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground  mt-0.5">
+                            <span>SGST</span>
+                            <span>₹{calculateSGSTAmount().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground  mt-0.5">
+                            <span>CGST</span>
+                            <span>₹{calculateCGSTAmount().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>CGST (9%)</span>
-                          <span>₹{calculateCGSTAmount().toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Round Off</span>
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-sm text-muted-foreground">Round Off</span>
                           <div className="flex items-center">
-                            <span className="mr-2">-</span>
+                            <span className="text-sm text-muted-foreground mr-2">-</span>
                             <Input
-                              type="text"
-                              className="w-24 h-8 text-right"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="w-24 h-8 text-right text-sm"
                               value={formData.roundOff || ''}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/[^0-9.]/g, '');
-                                setFormData(prev => ({
-                                  ...prev,
-                                  roundOff: parseFloat(value) || 0
-                                }));
+                                const value = e.target.value;
+                                // Allow decimal numbers with up to 2 decimal places
+                                if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    roundOff: value === '' ? 0 : parseFloat(value)
+                                  }));
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // Format to 2 decimal places on blur
+                                const value = parseFloat(e.target.value);
+                                if (!isNaN(value)) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    roundOff: parseFloat(value.toFixed(2))
+                                  }));
+                                }
                               }}
                             />
                           </div>
                         </div>
-                        <div className="flex justify-between font-bold border-t pt-2 mt-2">
-                          <span>Total</span>
-                          <span>₹{calculateTotal().toFixed(2)}</span>
+                        <div className="flex justify-between pt-2 mt-2 border-t border-border">
+                          <span className="font-semibold">Total</span>
+                          <span className="font-bold text-base">₹{calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                     </CardContent>

@@ -123,19 +123,25 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
     return items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
   };
 
+  // Calculate GST for a single item
+  const calculateItemGST = (item: InvoiceItem): number => {
+    const itemTotal = item.quantity * item.rate;
+    return (itemTotal * (item.gstRate || 0)) / 100;
+  };
+
+  // Calculate total GST for all items
   const calculateGSTAmount = (): number => {
-    return items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.rate;
-      return sum + (itemTotal * (item.gstRate || 0)) / 100;
-    }, 0);
+    return items.reduce((sum, item) => sum + calculateItemGST(item), 0);
   };
 
+  // Calculate SGST (50% of total GST)
   const calculateSGSTAmount = (): number => {
-    return calculateGSTAmount() / 2; // 50% of total GST is SGST
+    return calculateGSTAmount() / 2;
   };
 
-  const calculateCGSTAmount = () => {
-    return calculateGSTAmount() / 2; // Split GST equally between SGST and CGST
+  // Calculate CGST (50% of total GST)
+  const calculateCGSTAmount = (): number => {
+    return calculateGSTAmount() / 2;
   };
 
   const calculateTotal = () => {
@@ -499,15 +505,15 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                     <span>₹{calculateSubtotal().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>GST ({calculateGSTRate()}%)</span>
+                    <span>Total GST</span>
                     <span>₹{calculateGSTAmount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground text-sm">
-                    <span>SGST ({calculateGSTRate() / 2}%)</span>
+                    <span>SGST</span>
                     <span>₹{calculateSGSTAmount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground text-sm">
-                    <span>CGST ({calculateGSTRate() / 2}%)</span>
+                    <span>CGST</span>
                     <span>₹{calculateCGSTAmount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -515,15 +521,31 @@ export function InvoiceForm({ invoice, onClose }: InvoiceFormProps) {
                     <div className="flex items-center">
                       <span className="mr-2">-</span>
                       <Input
-                        type="text"
-                        min="0"
+                        type="number"
                         step="0.01"
-                        className="w-24 h-8 text-right"
+                        min="0"
+                        className="w-24 h-8 text-right text-sm"
                         value={formData.roundOff || ''}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          roundOff: parseFloat(e.target.value) || 0
-                        }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow decimal numbers with up to 2 decimal places
+                          if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                            setFormData(prev => ({
+                              ...prev,
+                              roundOff: value === '' ? 0 : parseFloat(value)
+                            }));
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Format to 2 decimal places on blur
+                          const value = parseFloat(e.target.value);
+                          if (!isNaN(value)) {
+                            setFormData(prev => ({
+                              ...prev,
+                              roundOff: parseFloat(value.toFixed(2))
+                            }));
+                          }
+                        }}
                       />
                     </div>
                   </div>

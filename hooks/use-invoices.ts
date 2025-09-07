@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { getDoc, deleteDoc, where, query, getDocs, setDoc } from "firebase/firestore"
+import { useAuth } from "../contexts/AuthContext"
+import { getDoc, deleteDoc, where, query, getDocs, setDoc, addDoc } from "firebase/firestore"
 import { orderBy, doc, updateDoc, collection } from "firebase/firestore"
 import { db } from "../lib/firebase"
 import type { Invoice } from "../types/invoice"
@@ -22,7 +23,145 @@ export function useInvoices() {
   })
 
   const [apiError, setApiError] = useState<string | null>(null)
+  const { user } = useAuth()
 
+  // Function to update or create GST record for an invoice
+  const updateGSTRecord = useCallback(async (invoice: Invoice) => {
+    try {
+      console.log('Updating GST record for invoice:', invoice.id);
+      if (!invoice.id) {
+        console.error('Cannot update GST record: No invoice ID provided');
+        return;
+      }
+      
+      const now = new Date().toISOString();
+      const invoiceDate = new Date(invoice.invoiceDate || now);
+      const month = invoiceDate.toISOString().slice(0, 7); // YYYY-MM format
+      const quarter = `${invoiceDate.getFullYear()}-Q${Math.ceil((invoiceDate.getMonth() + 1) / 3)}`;
+      const year = invoiceDate.getFullYear().toString();
+      
+      if (!invoice.items || !Array.isArray(invoice.items) || invoice.items.length === 0) {
+        console.error('Cannot update GST record: Invoice has no items');
+        return;
+      }
+      
+      // Calculate total GST amount (sum of all items' GST)
+      const totalGST = invoice.items.reduce((sum, item) => {
+        if (!item || typeof item.quantity !== 'number' || !item.rate) return sum;
+        const itemTotal = item.quantity * item.rate;
+        const itemGST = (itemTotal * (item.gstRate || 0)) / 100;
+        return sum + itemGST;
+      }, 0);
+      
+      console.log('Calculated total GST:', totalGST);
+      
+      // Check if a GST record already exists for this invoice
+      const gstRecordsQuery = query(
+        collection(db, 'gstRecords'),
+        where('invoiceId', '==', invoice.id)
+      );
+      
+      const querySnapshot = await getDocs(gstRecordsQuery);
+      const existingRecord = querySnapshot.docs[0];
+      
+      const gstRecordData: Omit<GSTRecord, 'id'> = {
+        type: 'collected',
+        amount: invoice.totalAmount || 0,
+        gstAmount: totalGST,
+        gstRate: invoice.items[0]?.gstRate || 18,
+        description: `GST collected for invoice ${invoice.invoiceNumber || 'N/A'}`,
+        status: 'unfiled',
+        paymentStatus: invoice.status === 'paid' ? 'paid' : 'pending',
+        invoiceId: invoice.id,
+        customerName: invoice.customerName || 'Unknown',
+        customerGSTIN: invoice.customerGSTIN || '',
+        date: invoice.invoiceDate || now.split('T')[0],
+        month,
+        quarter,
+        year,
+        createdAt: invoice.createdAt || now,
+        updatedAt: now,
+        _createdBy: user?.uid || ''
+      };
+      
+      console.log('GST Record Data:', gstRecordData);
+      
+      if (existingRecord) {
+        console.log('Updating existing GST record:', existingRecord.id);
+        await updateDoc(doc(db, 'gstRecords', existingRecord.id), gstRecordData);
+        console.log('Successfully updated GST record');
+      } else {
+        console.log('Creating new GST record');
+        const docRef = await addDoc(collection(db, 'gstRecords'), gstRecordData);
+        console.log('Successfully created GST record with ID:', docRef.id);
+      }
+    } catch (error) {
+      console.error('Error updating GST record:', error);
+      throw error;
+    }
+  }, [user?.uid]);
+
+  // Wrap saveInvoice to include GST record updates
+  const saveInvoiceWithGST = useCallback(async (invoiceData: Omit<Invoice, 'id'> & { id?: string }): Promise<Invoice> => {
+    console.log('saveInvoiceWithGST called with data:', invoiceData);
+    const now = new Date().toISOString();
+    
+    // Get the existing invoice data if this is an update
+    let existingInvoice: Invoice | null = null;
+    if (invoiceData.id) {
+      console.log('Fetching existing invoice data for update');
+      try {
+        const docRef = doc(db, 'invoices', invoiceData.id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          existingInvoice = { id: docSnap.id, ...docSnap.data() } as Invoice;
+          console.log('Found existing invoice:', existingInvoice);
+        }
+      } catch (error) {
+        console.error('Error fetching existing invoice:', error);
+      }
+    }
+    
+    // Prepare the updated invoice data
+    const updatedInvoice = {
+      ...(existingInvoice || {}), // Start with existing data if available
+      ...invoiceData, // Apply all updates
+      updatedAt: now,
+      // Only set createdAt for new invoices
+      ...(!invoiceData.id && { 
+        createdAt: now,
+        status: 'draft' as const,
+        paidAmount: 0,
+        paymentHistory: []
+      })
+    };
+    
+    console.log('Prepared updated invoice data:', updatedInvoice);
+    
+    try {
+      // Save the invoice
+      console.log('Saving invoice to database...');
+      const docId = await saveInvoice(updatedInvoice);
+      console.log('Invoice saved with ID:', docId);
+      
+      // Create the complete invoice object with the new ID
+      const savedInvoice: Invoice = {
+        ...updatedInvoice,
+        id: docId
+      };
+      
+      // Update GST record (don't await to prevent blocking the UI)
+      console.log('Updating GST record...');
+      updateGSTRecord(savedInvoice)
+        .then(() => console.log('GST record update completed'))
+        .catch(error => console.error('Error in GST record update:', error));
+      
+      return savedInvoice;
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      throw error;
+    }
+  }, [saveInvoice, updateGSTRecord]);
 
   const createInvoiceFromQuotation = useCallback(async (quotation: Quotation) => {
     const now = new Date()
@@ -206,7 +345,7 @@ export function useInvoices() {
     invoices,
     loading,
     error: error?.message || apiError,
-    saveInvoice,
+    saveInvoice: saveInvoiceWithGST,
     deleteInvoice: handleDeleteInvoice,
     createInvoiceFromQuotation,
     addPayment,
