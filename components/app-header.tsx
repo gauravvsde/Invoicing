@@ -20,7 +20,7 @@ interface CompanyInfo {
 export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   const [mounted, setMounted] = useState(false)
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
-    name: "Your Company Name",
+    name: "Pratham Urja Solutions",
     email: "",
     phone: "",
     address: "",

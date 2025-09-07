@@ -2,6 +2,7 @@ import { Space_Grotesk, DM_Sans } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext";
 import NavBar from "@/components/layout/NavBar";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 export const metadata = {
   title: "GST Billing Pro",
@@ -32,7 +33,9 @@ export default function RootLayout({
         <AuthProvider>
           <NavBar />
           <main className="min-h-[calc(100vh-4rem)]">
-            {children}
+            <AuthGuard>
+              {children}
+            </AuthGuard>
           </main>
         </AuthProvider>
       </body>
