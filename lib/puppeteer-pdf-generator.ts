@@ -180,13 +180,12 @@ export class PuppeteerPDFGenerator {
     const sgstSum = computed.reduce((sum: number, r: ComputedItem) => sum + r.sgst, 0);
     const rawTotal = subAmount + cgstSum + sgstSum;
 
-    // Let caller override the nice grand total; otherwise round to whole rupee
-    const grandTotal =
-      typeof doc.grandTotal === 'number'
-        ? Number(doc.grandTotal)
-        : Math.round(rawTotal);
-
-    const roundOff = grandTotal - rawTotal;
+    // Use provided roundOff if available, otherwise calculate it
+    const roundOff = typeof doc.roundOff === 'number' ? doc.roundOff : 0;
+    // Let caller override the nice grand total; otherwise use calculated total with round off
+    const grandTotal = typeof doc.grandTotal === 'number'
+      ? Number(doc.grandTotal)
+      : Math.round(rawTotal - roundOff);
 
     // Helpers for display
     const formatRound = (n: number) => {
